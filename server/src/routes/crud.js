@@ -9,6 +9,7 @@ const TABLES = {
   labs: ['test_name', 'test_date', 'result_value', 'unit', 'reference_range', 'notes'],
   visits: ['visit_date', 'provider', 'reason', 'summary'],
   contacts: ['name', 'relationship', 'role', 'phone', 'email', 'notes'],
+  goals: ['goal_type', 'target', 'notes'],
 };
 
 export function makeCrudRouter(table) {

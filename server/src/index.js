@@ -5,6 +5,7 @@ import cors from 'cors';
 import authRouter from './routes/auth.js';
 import profileRouter from './routes/profile.js';
 import documentsRouter from './routes/documents.js';
+import recommendationsRouter from './routes/recommendations.js';
 import { makeCrudRouter } from './routes/crud.js';
 import { requireAuth } from './auth.js';
 
@@ -31,7 +32,8 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 app.use('/api/profile', requireAuth, profileRouter);
 app.use('/api/documents', requireAuth, documentsRouter);
-for (const table of ['conditions', 'medications', 'allergies', 'immunizations', 'labs', 'visits', 'contacts']) {
+app.use('/api/recommendations', requireAuth, recommendationsRouter);
+for (const table of ['conditions', 'medications', 'allergies', 'immunizations', 'labs', 'visits', 'contacts', 'goals']) {
   app.use(`/api/${table}`, requireAuth, makeCrudRouter(table));
 }
 

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { schemas } from '../lib/schemas';
 
-const TABLES = Object.keys(schemas);
+const TABLES = Object.keys(schemas).filter((t) => t !== 'goals');
 
 export default function Dashboard() {
   const [counts, setCounts] = useState({});
@@ -26,6 +26,23 @@ export default function Dashboard() {
       <div className="page-header">
         <h2>{profile?.full_name ? `${profile.full_name}'s Health Record` : 'Your Health Record'}</h2>
         <p>An overview of everything you've recorded.</p>
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <Link
+          to="/recommendations"
+          style={{
+            display: 'inline-block',
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: 'var(--radius)',
+            padding: '12px 20px',
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--primary-dark)',
+          }}
+        >
+          ✦ View my recommendations →
+        </Link>
       </div>
       <div className="dashboard-grid">
         {TABLES.map((table) => (

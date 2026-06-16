@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Documents from './pages/Documents';
+import Recommendations from './pages/Recommendations';
 import RecordsPage from './pages/RecordsPage';
 
 function App() {
@@ -22,6 +23,8 @@ function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/recommendations" element={<Recommendations />} />
+        <Route path="/goals" element={<RecordsPage table="goals" />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/conditions" element={<RecordsPage table="conditions" />} />

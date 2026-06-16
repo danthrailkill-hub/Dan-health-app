@@ -91,4 +91,33 @@ export const schemas = {
     primary: 'name',
     secondary: (r) => [r.role, r.phone].filter(Boolean).join(' · '),
   },
+  goals: {
+    title: 'My Goals',
+    description: 'Health and lifestyle goals that drive your personalised recommendations.',
+    fields: [
+      {
+        key: 'goal_type',
+        label: 'Goal',
+        type: 'select',
+        required: true,
+        options: [
+          'Weight loss',
+          'Muscle gain / weight gain',
+          'Improve cardiovascular fitness',
+          'Build strength',
+          'Lower blood pressure',
+          'Lower cholesterol',
+          'Manage blood sugar',
+          'Improve sleep',
+          'Reduce stress',
+          'Increase energy',
+          'General wellness',
+        ],
+      },
+      { key: 'target', label: 'Specific target (optional)', type: 'text' },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+    primary: 'goal_type',
+    secondary: (r) => r.target || '',
+  },
 };
