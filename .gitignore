@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+dist/
+*.log
+
+# server runtime data (personal medical info must never be committed)
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
+server/uploads/*
+!server/uploads/.gitkeep

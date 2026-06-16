@@ -1,0 +1,320 @@
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --border: #e1e5ea;
+  --text: #1c2530;
+  --text-muted: #5c6b7a;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --danger: #dc2626;
+  --radius: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 230px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar h1 {
+  font-size: 16px;
+  padding: 0 10px 16px;
+  margin: 0;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.sidebar a, .sidebar .nav-link {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.sidebar a.active, .sidebar a:hover {
+  background: #eef2ff;
+  color: var(--primary-dark);
+}
+
+.sidebar .logout-btn {
+  margin-top: 12px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.main-content {
+  flex: 1;
+  padding: 32px 40px;
+  max-width: 920px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.record-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.record-row .primary {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.record-row .secondary {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.record-row .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--primary);
+  color: white;
+}
+
+.btn:hover {
+  background: var(--primary-dark);
+}
+
+.btn.secondary {
+  background: #eef1f5;
+  color: var(--text);
+}
+
+.btn.secondary:hover {
+  background: #e1e6ec;
+}
+
+.btn.danger {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+.btn.danger:hover {
+  background: #fecaca;
+}
+
+.btn.small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.form-field.full {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.form-field input, .form-field select, .form-field textarea {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+}
+
+.form-field textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  grid-column: 1 / -1;
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 30px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.error-banner {
+  background: #fee2e2;
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px 32px;
+  width: 320px;
+}
+
+.login-box h1 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.login-box p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+.login-box input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.login-box .btn {
+  width: 100%;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.summary-card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  color: var(--text);
+}
+
+.summary-card:hover {
+  border-color: var(--primary);
+}
+
+.summary-card .count {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.summary-card .label {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.doc-row input[type="file"] {
+  font-size: 13px;
+}
