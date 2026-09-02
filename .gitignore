@@ -10,3 +10,8 @@ server/data/*.db-shm
 server/data/*.db-wal
 server/uploads/*
 !server/uploads/.gitkeep
+
+# survey app runtime data (employee PII must never be committed)
+survey/server/data/*.db
+survey/server/data/*.db-shm
+survey/server/data/*.db-wal
