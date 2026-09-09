@@ -144,26 +144,45 @@ export default function EmployeeSurvey() {
               {state.survey.description && <p className="lead">{state.survey.description}</p>}
               {submitError && <div className="error-banner">{submitError}</div>}
               <form onSubmit={handleSubmit}>
-                {state.questions.map((q) => (
-                  <div className="question" key={q.id}>
-                    <div className="question-prompt">
-                      {q.prompt}
-                      {q.required && <span className="required-mark">*</span>}
+                {state.questions.map((q, i) => {
+                  const showSectionHeader = q.section && q.section !== state.questions[i - 1]?.section;
+                  return (
+                    <div key={q.id}>
+                      {showSectionHeader && (
+                        <h2
+                          style={{
+                            fontSize: '1.05rem',
+                            color: 'var(--navy)',
+                            marginTop: i === 0 ? 0 : 32,
+                            marginBottom: 4,
+                            paddingBottom: 8,
+                            borderBottom: '1px solid var(--gray-200)',
+                          }}
+                        >
+                          {q.section}
+                        </h2>
+                      )}
+                      <div className="question">
+                        <div className="question-prompt">
+                          {q.prompt}
+                          {q.required && <span className="required-mark">*</span>}
+                        </div>
+                        {q.type === 'likert5' && (
+                          <LikertQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
+                        )}
+                        {q.type === 'single_choice' && (
+                          <SingleChoiceQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
+                        )}
+                        {q.type === 'multi_choice' && (
+                          <MultiChoiceQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
+                        )}
+                        {q.type === 'text' && (
+                          <TextQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
+                        )}
+                      </div>
                     </div>
-                    {q.type === 'likert5' && (
-                      <LikertQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
-                    )}
-                    {q.type === 'single_choice' && (
-                      <SingleChoiceQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
-                    )}
-                    {q.type === 'multi_choice' && (
-                      <MultiChoiceQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
-                    )}
-                    {q.type === 'text' && (
-                      <TextQuestion question={q} value={answers[q.id]} onChange={setAnswer} />
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
                 <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
                   {submitting ? 'Submitting…' : 'Submit Survey'}
                 </button>

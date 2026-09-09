@@ -22,19 +22,21 @@ function buildAggregate(survey) {
     const values = grouped.get(q.id) || [];
     const answered = values.length;
 
+    const base = { id: q.id, prompt: q.prompt, type: q.type, section: q.section, category: q.category, answered };
+
     if (meta.type === 'likert5') {
       const nums = values.map(Number).filter((n) => Number.isFinite(n));
       const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
       nums.forEach((n) => { if (counts[n] !== undefined) counts[n] += 1; });
       const average = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
-      return { id: q.id, prompt: q.prompt, type: q.type, answered, average, counts };
+      return { ...base, average, counts };
     }
 
     if (meta.type === 'single_choice') {
       const counts = {};
       (meta.options || []).forEach((o) => { counts[o] = 0; });
       values.forEach((v) => { counts[v] = (counts[v] || 0) + 1; });
-      return { id: q.id, prompt: q.prompt, type: q.type, answered, counts };
+      return { ...base, counts };
     }
 
     if (meta.type === 'multi_choice') {
@@ -45,23 +47,47 @@ function buildAggregate(survey) {
         try { arr = JSON.parse(v); } catch { arr = [v]; }
         arr.forEach((opt) => { counts[opt] = (counts[opt] || 0) + 1; });
       });
-      return { id: q.id, prompt: q.prompt, type: q.type, answered, counts };
+      return { ...base, counts };
     }
 
     // text
-    return { id: q.id, prompt: q.prompt, type: q.type, answered, responses: values };
+    return { ...base, responses: values };
   });
+}
+
+// Per-category (factor) average score, across all rating questions in that category.
+function buildCategoryScores(questionResults) {
+  const byCategory = new Map();
+  for (const q of questionResults) {
+    if (q.type !== 'likert5' || q.average === null) continue;
+    const key = q.category || 'Uncategorized';
+    if (!byCategory.has(key)) byCategory.set(key, { totalAnswered: 0, weightedSum: 0, questionCount: 0 });
+    const bucket = byCategory.get(key);
+    bucket.weightedSum += q.average * q.answered;
+    bucket.totalAnswered += q.answered;
+    bucket.questionCount += 1;
+  }
+  return [...byCategory.entries()]
+    .map(([category, b]) => ({
+      category,
+      average: b.totalAnswered ? b.weightedSum / b.totalAnswered : null,
+      questionCount: b.questionCount,
+    }))
+    .sort((a, b) => (b.average ?? 0) - (a.average ?? 0));
 }
 
 router.get('/:id/results', (req, res) => {
   const survey = getSurveyById(req.params.id);
   if (!survey) return res.status(404).json({ error: 'Survey not found' });
 
+  const questions = buildAggregate(survey);
+
   res.json({
     survey,
     responseCount: countResponses(survey.id),
     activeEmployeeCount: countActiveEmployees(),
-    questions: buildAggregate(survey),
+    questions,
+    categoryScores: buildCategoryScores(questions),
   });
 });
 

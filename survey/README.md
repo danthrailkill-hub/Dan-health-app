@@ -14,8 +14,10 @@ survey responses linked to that employee's demographic data.
 1. **Admin** logs in with a shared admin password and uploads a CSV of active
    employees (Employee ID, name, department, location, supervisor, etc.).
 2. **Admin** creates a survey and adds questions (ratings, single/multiple
-   choice, or open text), either one at a time or pasted in bulk, then marks
-   the survey **Open**.
+   choice, or open text) — one at a time, pasted in bulk, or imported from a
+   CSV export — then marks the survey **Open**. Questions can carry a
+   **section** (where they appear as employees take the survey) and a
+   **category/factor** (how they're grouped in the results dashboard).
 3. **Employee** visits the site and enters only their Employee ID. The server
    checks it against the uploaded roster and confirms the employee is active
    before letting them into the open survey.
@@ -74,6 +76,22 @@ Only `Employee Id` is required; every other column is optional. An optional
 - **Merge**: adds/updates rows by Employee ID without removing existing ones.
 
 A blank template is available from the same page (Download CSV Template).
+
+## Importing questions from a file
+
+Survey editor → Import from file. Accepts a **CSV** export with these headers
+(case/punctuation flexible): `Section`, `Factor` (or `Category`), `Question`,
+`Question Type`, `Select Options`. This matches the question-bank export
+format used by engagement-survey platforms like Culture Amp, so you can drop
+one in directly.
+
+- Question types: `rating` → 1-5 rating, `free_text` → open text, `select` →
+  single choice (needs a populated `Select Options` column). `demographic`
+  rows are skipped — that data comes from the employee roster instead.
+- Only `.csv` is accepted. If your export is an Excel workbook, open it and
+  use File → Save As → CSV first — the `xlsx` npm package used to parse
+  Excel files server-side carries unpatched high-severity vulnerabilities
+  (prototype pollution, ReDoS), so this app doesn't parse `.xlsx` directly.
 
 ## Data
 

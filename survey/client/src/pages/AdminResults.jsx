@@ -24,6 +24,23 @@ function LikertBreakdown({ counts, answered }) {
   );
 }
 
+function CategoryScoreBar({ category, average, questionCount }) {
+  const pct = average !== null ? Math.round((average / 5) * 100) : 0;
+  return (
+    <div className="bar">
+      <div className="bar-label" style={{ width: 220 }}>
+        {category} <span style={{ color: 'var(--gray-400)' }}>({questionCount})</span>
+      </div>
+      <div className="bar-track">
+        <div className="bar-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="bar-count" style={{ width: 60 }}>
+        {average !== null ? `${average.toFixed(2)} / 5` : '—'}
+      </div>
+    </div>
+  );
+}
+
 function ChoiceBreakdown({ counts, answered }) {
   const entries = Object.entries(counts);
   return (
@@ -63,6 +80,19 @@ export default function AdminResults() {
     ? Math.round((data.responseCount / data.activeEmployeeCount) * 100)
     : 0;
 
+  // Group questions by category for display, preserving first-seen order.
+  const groups = [];
+  for (const q of data.questions) {
+    const label = q.category || 'Uncategorized';
+    let group = groups[groups.length - 1];
+    if (!group || group.label !== label) {
+      group = { label, items: [] };
+      groups.push(group);
+    }
+    group.items.push(q);
+  }
+  const hasCategories = data.questions.some((q) => q.category);
+
   return (
     <div>
       <Link className="link-back" to="/admin/surveys">
@@ -91,27 +121,48 @@ export default function AdminResults() {
         </div>
       </div>
 
-      {data.questions.map((q) => (
-        <div className="panel" key={q.id}>
-          <h2 style={{ marginTop: 0, fontSize: '1rem' }}>{q.prompt}</h2>
+      {data.categoryScores && data.categoryScores.length > 0 && (
+        <div className="panel">
+          <h2 style={{ marginTop: 0 }}>Factor Scores</h2>
           <p className="hint" style={{ marginBottom: 14 }}>
-            {q.answered} response{q.answered === 1 ? '' : 's'}
-            {q.type === 'likert5' && q.average !== null ? ` · average ${q.average.toFixed(2)} / 5` : ''}
+            Average rating (out of 5) across all rating questions in each category.
           </p>
-          {q.type === 'likert5' && <LikertBreakdown counts={q.counts} answered={q.answered} />}
-          {(q.type === 'single_choice' || q.type === 'multi_choice') && (
-            <ChoiceBreakdown counts={q.counts} answered={q.answered} />
+          {data.categoryScores.map((c) => (
+            <CategoryScoreBar key={c.category} {...c} />
+          ))}
+        </div>
+      )}
+
+      {groups.map((group) => (
+        <div key={group.label}>
+          {hasCategories && (
+            <h2 style={{ fontSize: '1.1rem', color: 'var(--navy)', marginTop: 28, marginBottom: 10 }}>
+              {group.label}
+            </h2>
           )}
-          {q.type === 'text' && (
-            <div>
-              {q.responses.length === 0 && <p className="hint">No responses yet.</p>}
-              {q.responses.map((r, i) => (
-                <div className="text-response" key={i}>
-                  {r}
+          {group.items.map((q) => (
+            <div className="panel" key={q.id}>
+              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>{q.prompt}</h3>
+              <p className="hint" style={{ marginBottom: 14 }}>
+                {q.answered} response{q.answered === 1 ? '' : 's'}
+                {q.type === 'likert5' && q.average !== null ? ` · average ${q.average.toFixed(2)} / 5` : ''}
+              </p>
+              {q.type === 'likert5' && <LikertBreakdown counts={q.counts} answered={q.answered} />}
+              {(q.type === 'single_choice' || q.type === 'multi_choice') && (
+                <ChoiceBreakdown counts={q.counts} answered={q.answered} />
+              )}
+              {q.type === 'text' && (
+                <div>
+                  {q.responses.length === 0 && <p className="hint">No responses yet.</p>}
+                  {q.responses.map((r, i) => (
+                    <div className="text-response" key={i}>
+                      {r}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          ))}
         </div>
       ))}
     </div>

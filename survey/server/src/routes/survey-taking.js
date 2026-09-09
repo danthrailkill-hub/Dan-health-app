@@ -19,6 +19,7 @@ router.get('/current', (req, res) => {
     type: q.type,
     options: q.options ? JSON.parse(q.options) : null,
     required: !!q.required,
+    section: q.section,
   }));
 
   res.json({

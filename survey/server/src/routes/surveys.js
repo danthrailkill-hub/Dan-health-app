@@ -1,10 +1,14 @@
 import express from 'express';
+import multer from 'multer';
 import {
   listSurveys, createSurvey, getSurveyById, updateSurvey, deleteSurvey, closeOtherOpenSurveys,
   listQuestions, createQuestion, updateQuestion, deleteQuestion, reorderQuestions, getQuestionById,
   countResponses,
 } from '../db.js';
 import { parseBulkQuestions } from '../lib/questions.js';
+import { parseQuestionsFile } from '../lib/questionFile.js';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router = express.Router();
 
@@ -57,13 +61,16 @@ router.post('/:id/questions', (req, res) => {
   const survey = getSurveyById(req.params.id);
   if (!survey) return res.status(404).json({ error: 'Survey not found' });
 
-  const { prompt, type, options, required } = req.body;
+  const { prompt, type, options, required, section, category } = req.body;
   if (!prompt || !prompt.trim()) return res.status(400).json({ error: 'Question prompt is required' });
   if ((type === 'single_choice' || type === 'multi_choice') && (!Array.isArray(options) || options.length < 2)) {
     return res.status(400).json({ error: 'Choice questions need at least two options' });
   }
 
-  const question = createQuestion(survey.id, { prompt: prompt.trim(), type, options, required });
+  const question = createQuestion(survey.id, {
+    prompt: prompt.trim(), type, options, required,
+    section: section?.trim() || null, category: category?.trim() || null,
+  });
   res.status(201).json({ question });
 });
 
@@ -75,6 +82,28 @@ router.post('/:id/questions/bulk', (req, res) => {
   const { questions, errors } = parseBulkQuestions(text);
   if (questions.length === 0) {
     return res.status(400).json({ error: 'No valid questions found', details: errors });
+  }
+
+  const created = questions.map((q) => createQuestion(survey.id, q));
+  res.status(201).json({ questions: created, warnings: errors });
+});
+
+router.post('/:id/questions/import', upload.single('file'), (req, res) => {
+  const survey = getSurveyById(req.params.id);
+  if (!survey) return res.status(404).json({ error: 'Survey not found' });
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  let parsed;
+  try {
+    parsed = parseQuestionsFile(req.file.buffer, req.file.originalname);
+  } catch (err) {
+    const message = err.isUserError ? err.message : 'Could not read that file. Upload a .csv export.';
+    return res.status(400).json({ error: message });
+  }
+
+  const { questions, errors } = parsed;
+  if (questions.length === 0) {
+    return res.status(400).json({ error: 'No valid questions found in the file', details: errors });
   }
 
   const created = questions.map((q) => createQuestion(survey.id, q));

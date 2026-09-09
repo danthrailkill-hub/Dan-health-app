@@ -14,6 +14,8 @@ function QuestionForm({ onAdd }) {
   const [type, setType] = useState('likert5');
   const [options, setOptions] = useState('');
   const [required, setRequired] = useState(true);
+  const [section, setSection] = useState('');
+  const [category, setCategory] = useState('');
   const [error, setError] = useState('');
 
   async function handleSubmit(e) {
@@ -29,7 +31,14 @@ function QuestionForm({ onAdd }) {
       return;
     }
     try {
-      await onAdd({ prompt: prompt.trim(), type, options: opts.length ? opts : null, required });
+      await onAdd({
+        prompt: prompt.trim(),
+        type,
+        options: opts.length ? opts : null,
+        required,
+        section: section.trim() || null,
+        category: category.trim() || null,
+      });
       setPrompt('');
       setOptions('');
       setRequired(true);
@@ -66,6 +75,28 @@ function QuestionForm({ onAdd }) {
           />
         </div>
       )}
+      <div className="field" style={{ display: 'flex', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="section">Section (where it appears in the survey)</label>
+          <input
+            id="section"
+            type="text"
+            value={section}
+            onChange={(e) => setSection(e.target.value)}
+            placeholder="e.g. Your Manager"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="category">Category / Factor (results grouping)</label>
+          <input
+            id="category"
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="e.g. Management"
+          />
+        </div>
+      </div>
       <div className="field">
         <label className="choice-option" style={{ padding: 0 }}>
           <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
@@ -129,11 +160,70 @@ function BulkImportForm({ onImport }) {
         <div className="hint">
           Format: <code>question | type | options (comma-separated) | optional</code>. Type and everything
           after it can be left off — questions default to a 1-5 rating and are required. Valid types:
-          likert5, single_choice, multi_choice, text.
+          likert5, single_choice, multi_choice, text. Section/category aren't set this way — use the
+          single-question form or a file import for those.
         </div>
       </div>
       <button type="submit" className="btn btn-secondary" disabled={busy}>
         {busy ? 'Importing…' : 'Import Questions'}
+      </button>
+    </form>
+  );
+}
+
+function FileImportForm({ onImport }) {
+  const [file, setFile] = useState(null);
+  const [error, setError] = useState('');
+  const [warnings, setWarnings] = useState([]);
+  const [imported, setImported] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setWarnings([]);
+    setImported(0);
+    if (!file) return;
+    setBusy(true);
+    try {
+      const data = await onImport(file);
+      setWarnings(data.warnings || []);
+      setImported(data.questions?.length || 0);
+      setFile(null);
+      e.target.reset();
+    } catch (err) {
+      setError(err.message);
+      setWarnings(err.details || []);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {error && <div className="error-banner">{error}</div>}
+      {imported > 0 && <div className="success-banner">Imported {imported} questions.</div>}
+      {warnings.length > 0 && (
+        <div className="info-banner">
+          {warnings.map((w, i) => (
+            <div key={i}>{w}</div>
+          ))}
+        </div>
+      )}
+      <div className="field">
+        <label htmlFor="questionFile">Question spreadsheet (.csv)</label>
+        <input id="questionFile" type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} />
+        <div className="hint">
+          Works with exports that have <code>Section</code>, <code>Factor</code> (or{' '}
+          <code>Category</code>), <code>Question</code>, and <code>Question Type</code> columns —
+          question types <code>rating</code>, <code>free_text</code>, and <code>select</code> are
+          recognized. <code>demographic</code> rows are skipped, since demographic data comes from the
+          employee roster upload instead. If your file is an Excel workbook, open it and use
+          File → Save As → CSV first.
+        </div>
+      </div>
+      <button type="submit" className="btn btn-secondary" disabled={!file || busy}>
+        {busy ? 'Importing…' : 'Import from File'}
       </button>
     </form>
   );
@@ -174,6 +264,14 @@ export default function AdminSurveyEditor() {
     return data;
   }
 
+  async function handleFileImport(file) {
+    const form = new FormData();
+    form.append('file', file);
+    const data = await api.post(`/api/admin/surveys/${id}/questions/import`, form);
+    load();
+    return data;
+  }
+
   async function handleDeleteQuestion(qid) {
     if (!window.confirm('Delete this question?')) return;
     await api.del(`/api/admin/surveys/${id}/questions/${qid}`);
@@ -207,6 +305,18 @@ export default function AdminSurveyEditor() {
 
   if (error) return <div className="error-banner">{error}</div>;
   if (!survey) return <p>Loading…</p>;
+
+  // Group questions by section for display, preserving position order.
+  const groups = [];
+  for (const q of questions) {
+    const label = q.section || 'Ungrouped';
+    let group = groups[groups.length - 1];
+    if (!group || group.label !== label) {
+      group = { label, items: [] };
+      groups.push(group);
+    }
+    group.items.push(q);
+  }
 
   return (
     <div>
@@ -266,32 +376,48 @@ export default function AdminSurveyEditor() {
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Questions ({questions.length})</h2>
         {questions.length === 0 && <p style={{ color: 'var(--gray-600)' }}>No questions yet.</p>}
-        {questions.map((q, i) => (
-          <div className="question-editor-item" key={q.id}>
-            <div>
-              <div className="qtype">{TYPE_LABEL[q.type]}{!q.required && ' · optional'}</div>
-              <div>{q.prompt}</div>
-              {q.options && <div className="hint">{JSON.parse(q.options).join(', ')}</div>}
-            </div>
-            <div className="actions-row">
-              <button type="button" className="btn btn-ghost" onClick={() => move(i, -1)} disabled={i === 0}>
-                ↑
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => move(i, 1)}
-                disabled={i === questions.length - 1}
-              >
-                ↓
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={() => handleToggleRequired(q)}>
-                {q.required ? 'Make optional' : 'Make required'}
-              </button>
-              <button type="button" className="btn btn-danger" onClick={() => handleDeleteQuestion(q.id)}>
-                Delete
-              </button>
-            </div>
+        {groups.map((group) => (
+          <div key={group.label} style={{ marginBottom: 20 }}>
+            {questions.some((q) => q.section) && (
+              <h3 style={{ fontSize: '0.9rem', color: 'var(--gray-600)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 10 }}>
+                {group.label}
+              </h3>
+            )}
+            {group.items.map((q) => {
+              const i = questions.indexOf(q);
+              return (
+                <div className="question-editor-item" key={q.id}>
+                  <div>
+                    <div className="qtype">
+                      {TYPE_LABEL[q.type]}
+                      {!q.required && ' · optional'}
+                      {q.category && ` · ${q.category}`}
+                    </div>
+                    <div>{q.prompt}</div>
+                    {q.options && <div className="hint">{JSON.parse(q.options).join(', ')}</div>}
+                  </div>
+                  <div className="actions-row">
+                    <button type="button" className="btn btn-ghost" onClick={() => move(i, -1)} disabled={i === 0}>
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => move(i, 1)}
+                      disabled={i === questions.length - 1}
+                    >
+                      ↓
+                    </button>
+                    <button type="button" className="btn btn-ghost" onClick={() => handleToggleRequired(q)}>
+                      {q.required ? 'Make optional' : 'Make required'}
+                    </button>
+                    <button type="button" className="btn btn-danger" onClick={() => handleDeleteQuestion(q.id)}>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
@@ -304,8 +430,13 @@ export default function AdminSurveyEditor() {
           <button type="button" className={tab === 'bulk' ? 'active' : ''} onClick={() => setTab('bulk')}>
             Bulk import
           </button>
+          <button type="button" className={tab === 'file' ? 'active' : ''} onClick={() => setTab('file')}>
+            Import from file
+          </button>
         </div>
-        {tab === 'add' ? <QuestionForm onAdd={handleAddQuestion} /> : <BulkImportForm onImport={handleBulkImport} />}
+        {tab === 'add' && <QuestionForm onAdd={handleAddQuestion} />}
+        {tab === 'bulk' && <BulkImportForm onImport={handleBulkImport} />}
+        {tab === 'file' && <FileImportForm onImport={handleFileImport} />}
       </div>
     </div>
   );

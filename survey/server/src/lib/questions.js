@@ -12,13 +12,14 @@ const TYPE_ALIASES = {
   multi: 'multi_choice',
   multichoice: 'multi_choice',
   checkbox: 'multi_choice',
+  select: 'single_choice',
   text: 'text',
   open: 'text',
   openended: 'text',
   freetext: 'text',
 };
 
-function normalizeType(raw) {
+export function normalizeType(raw) {
   if (!raw) return 'likert5';
   const key = raw.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   return TYPE_ALIASES[key] || (VALID_TYPES.has(raw.trim()) ? raw.trim() : 'likert5');

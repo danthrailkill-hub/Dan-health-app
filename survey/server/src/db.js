@@ -47,6 +47,8 @@ db.exec(`
     type TEXT NOT NULL DEFAULT 'likert5' CHECK (type IN ('likert5', 'single_choice', 'multi_choice', 'text')),
     options TEXT,
     required INTEGER NOT NULL DEFAULT 1,
+    section TEXT,
+    category TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -69,6 +71,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_responses_survey ON responses(survey_id);
   CREATE INDEX IF NOT EXISTS idx_answers_response ON answers(response_id);
 `);
+
+// Migration: add section/category to questions if this DB predates them.
+const questionColumns = db.prepare("PRAGMA table_info(questions)").all().map((c) => c.name);
+if (!questionColumns.includes('section')) db.exec('ALTER TABLE questions ADD COLUMN section TEXT');
+if (!questionColumns.includes('category')) db.exec('ALTER TABLE questions ADD COLUMN category TEXT');
 
 // --- Employees ---
 
@@ -173,12 +180,15 @@ export function getQuestionById(id) {
   return db.prepare('SELECT * FROM questions WHERE id = ?').get(id) || null;
 }
 
-export function createQuestion(surveyId, { prompt, type, options, required, position }) {
+export function createQuestion(surveyId, { prompt, type, options, required, position, section, category }) {
   const nextPos = position ?? (db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM questions WHERE survey_id = ?').get(surveyId).p);
   const info = db.prepare(`
-    INSERT INTO questions (survey_id, position, prompt, type, options, required)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(surveyId, nextPos, prompt, type || 'likert5', options ? JSON.stringify(options) : null, required === false ? 0 : 1);
+    INSERT INTO questions (survey_id, position, prompt, type, options, required, section, category)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    surveyId, nextPos, prompt, type || 'likert5', options ? JSON.stringify(options) : null,
+    required === false ? 0 : 1, section || null, category || null
+  );
   return getQuestionById(info.lastInsertRowid);
 }
 
@@ -191,9 +201,12 @@ export function updateQuestion(id, fields) {
     options: fields.options !== undefined ? (fields.options ? JSON.stringify(fields.options) : null) : existing.options,
     required: fields.required !== undefined ? (fields.required ? 1 : 0) : existing.required,
     position: fields.position ?? existing.position,
+    section: fields.section !== undefined ? fields.section : existing.section,
+    category: fields.category !== undefined ? fields.category : existing.category,
   };
   db.prepare(`
-    UPDATE questions SET prompt = @prompt, type = @type, options = @options, required = @required, position = @position
+    UPDATE questions SET prompt = @prompt, type = @type, options = @options, required = @required,
+      position = @position, section = @section, category = @category
     WHERE id = @id
   `).run({ ...data, id });
   return getQuestionById(id);
