@@ -5,6 +5,8 @@ import { getSettings, updateSettings, insertBatch, getEntries, TABLE_FOR } from 
 import { computeSummary } from './stats.js';
 import { importCsv, IMPORTERS, GENERIC_TEMPLATE } from './importers.js';
 import { fetchNightscout } from './nightscout.js';
+import { clearEversenseToken } from './eversense.js';
+import { runEversenseSync, getEversenseStatus, resetEversenseStatus } from './eversenseSync.js';
 import { generateDemo } from './demo.js';
 import { addDays, nowWallClock, normalizeTs } from './time.js';
 
@@ -33,7 +35,18 @@ const wrap = (fn) => async (req, res) => {
 };
 
 router.get('/settings', (req, res) => res.json(getSettings()));
-router.put('/settings', wrap((req, res) => res.json(updateSettings(req.body))));
+router.put(
+  '/settings',
+  wrap((req, res) => {
+    const credsChanged = ['eversense_region', 'eversense_username', 'eversense_password'].some((k) => req.body[k] !== undefined && req.body[k] !== '');
+    const updated = updateSettings(req.body);
+    if (credsChanged) {
+      clearEversenseToken();
+      resetEversenseStatus();
+    }
+    res.json(updated);
+  })
+);
 
 router.get('/summary', (req, res) => {
   const s = getSettings();
@@ -144,6 +157,16 @@ router.post(
     const days = Math.min(90, Math.max(1, Number(req.body.days) || 14));
     const batch = await fetchNightscout({ url: s.nightscout_url, token: s.nightscout_token, days, timeZone: s.timezone });
     res.json({ result: insertBatch(batch, 'nightscout') });
+  })
+);
+
+router.get('/eversense/status', (req, res) => res.json(getEversenseStatus()));
+
+router.post(
+  '/eversense/sync',
+  wrap(async (req, res) => {
+    const days = req.body.days ? Math.min(30, Math.max(1, Number(req.body.days))) : undefined;
+    res.json(await runEversenseSync({ days }));
   })
 );
 

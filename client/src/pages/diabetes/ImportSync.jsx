@@ -11,7 +11,7 @@ function ResultSummary({ result }) {
   return <div className="success-banner">Imported {parts.join(', ') || 'nothing new'}.</div>;
 }
 
-const ORIGIN_LABELS = { manual: 'Logged by hand', dexcom: 'Dexcom Clarity import', libre: 'LibreView import', csv: 'CSV import', nightscout: 'Nightscout sync', demo: 'Demo data' };
+const ORIGIN_LABELS = { manual: 'Logged by hand', eversense: 'Eversense sync', dexcom: 'Dexcom Clarity import', libre: 'LibreView import', csv: 'CSV import', nightscout: 'Nightscout sync', demo: 'Demo data' };
 
 export default function ImportSync() {
   const [file, setFile] = useState(null);
@@ -23,10 +23,14 @@ export default function ImportSync() {
   const [origins, setOrigins] = useState([]);
   const [nsDays, setNsDays] = useState(14);
   const [settings, setSettings] = useState(null);
+  const [evDays, setEvDays] = useState(14);
+  const [evStatus, setEvStatus] = useState(null);
 
   const loadOrigins = () => api.get('/api/diabetes/origins').then(setOrigins).catch(() => {});
+  const loadEvStatus = () => api.get('/api/diabetes/eversense/status').then(setEvStatus).catch(() => {});
   useEffect(() => {
     loadOrigins();
+    loadEvStatus();
     api.get('/api/diabetes/settings').then(setSettings).catch(() => {});
   }, []);
 
@@ -42,6 +46,8 @@ export default function ImportSync() {
       setError(err.message);
     } finally {
       setBusy('');
+      loadEvStatus();
+      api.get('/api/diabetes/settings').then(setSettings).catch(() => {});
     }
   }
 
@@ -106,6 +112,37 @@ export default function ImportSync() {
             <button className="btn" type="submit" disabled={!!busy}>{busy === 'import' ? 'Importing...' : 'Import file'}</button>
           </div>
         </form>
+      </section>
+
+      <section className="card">
+        <h3 className="card-title">Sync from Eversense</h3>
+        {settings?.eversense_username && settings?.has_eversense_password ? (
+          <>
+            <div className="toolbar">
+              <span className="small">Follower account: <code>{settings.eversense_username}</code></span>
+              <select className="date-input" value={evDays} onChange={(e) => setEvDays(Number(e.target.value))}>
+                <option value={1}>Last 24 hours</option>
+                <option value={7}>Last 7 days</option>
+                <option value={14}>Last 14 days</option>
+                <option value={30}>Last 30 days</option>
+              </select>
+              <button className="btn" disabled={!!busy} onClick={() => run('ev', () => api.post('/api/diabetes/eversense/sync', { days: evDays }))}>
+                {busy === 'ev' ? 'Syncing...' : 'Sync now'}
+              </button>
+            </div>
+            <p className="small muted" style={{ marginBottom: 0 }}>
+              {settings.eversense_auto_sync ? `Automatic sync is on (every ${evStatus?.auto_sync_minutes || 5} minutes).` : 'Automatic sync is off.'}{' '}
+              {evStatus?.last_success && `Last successful sync ${new Date(evStatus.last_success).toLocaleString()}${evStatus.patient ? ` for ${evStatus.patient}` : ''}.`}{' '}
+              {evStatus?.latest && `Latest reading ${evStatus.latest.mgdl} mg/dL${evStatus.latest.trend ? `, ${evStatus.latest.trend}` : ''}.`}
+            </p>
+            {evStatus?.ok === false && evStatus.message && <div className="error-banner" style={{ marginTop: 10, marginBottom: 0 }}>Last sync failed: {evStatus.message}</div>}
+          </>
+        ) : (
+          <p className="small">
+            Add your Eversense NOW follower account in <Link to="/diabetes/settings">Diabetes Settings</Link> to pull readings from the
+            Eversense cloud (up to 30 days back), automatically every 5 minutes if you like.
+          </p>
+        )}
       </section>
 
       <section className="card">

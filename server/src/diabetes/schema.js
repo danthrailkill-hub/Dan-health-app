@@ -1,5 +1,6 @@
 import { db } from '../db.js';
 import { defaultTimeZone } from './time.js';
+import { encryptSecret, decryptSecret } from './secrets.js';
 
 // Glucose is always stored in mg/dL; the UI converts to mmol/L for display if chosen.
 // `origin` records where a row came from (manual, dexcom, libre, csv, nightscout, demo)
@@ -64,15 +65,50 @@ db.exec(`
   );
 `);
 
+// Columns added after the first release. SQLite can't "ADD COLUMN IF NOT EXISTS", so check first.
+const SETTINGS_MIGRATIONS = {
+  eversense_region: "TEXT DEFAULT 'US'", // US | OUS (outside the US)
+  eversense_username: 'TEXT', // the Eversense NOW *follower* account email
+  eversense_password: 'TEXT', // encrypted, see secrets.js
+  eversense_patient: 'TEXT', // which followed person to sync, if the account follows several
+  eversense_auto_sync: 'INTEGER DEFAULT 0',
+};
+const existingCols = new Set(db.prepare('PRAGMA table_info(dm_settings)').all().map((c) => c.name));
+for (const [col, type] of Object.entries(SETTINGS_MIGRATIONS)) {
+  if (!existingCols.has(col)) db.exec(`ALTER TABLE dm_settings ADD COLUMN ${col} ${type}`);
+}
+
 db.prepare('INSERT OR IGNORE INTO dm_settings (id, timezone) VALUES (1, ?)').run(defaultTimeZone());
 
-export const SETTINGS_FIELDS = ['units', 'target_low', 'target_high', 'very_low', 'very_high', 'timezone', 'nightscout_url', 'nightscout_token'];
+export const SETTINGS_FIELDS = [
+  'units',
+  'target_low',
+  'target_high',
+  'very_low',
+  'very_high',
+  'timezone',
+  'nightscout_url',
+  'nightscout_token',
+  'eversense_region',
+  'eversense_username',
+  'eversense_password',
+  'eversense_patient',
+  'eversense_auto_sync',
+];
+
+// Saved credentials: never sent to the browser; encrypted in the database.
+const SECRET_FIELDS = ['nightscout_token', 'eversense_password'];
 
 export function getSettings({ includeSecrets = false } = {}) {
   const row = db.prepare('SELECT * FROM dm_settings WHERE id = 1').get();
-  if (!includeSecrets) {
-    row.has_nightscout_token = !!row.nightscout_token;
-    delete row.nightscout_token;
+  row.eversense_auto_sync = !!row.eversense_auto_sync;
+  for (const key of SECRET_FIELDS) {
+    if (includeSecrets) {
+      row[key] = decryptSecret(row[key]);
+    } else {
+      row[`has_${key}`] = !!row[key];
+      delete row[key];
+    }
   }
   return row;
 }
@@ -82,8 +118,8 @@ export function updateSettings(fields) {
   const next = { ...current };
   for (const key of SETTINGS_FIELDS) {
     if (fields[key] === undefined) continue;
-    // An empty token in the form means "keep the saved one"; send null to clear it.
-    if (key === 'nightscout_token' && fields[key] === '') continue;
+    // An empty secret in the form means "keep the saved one"; send null to clear it.
+    if (SECRET_FIELDS.includes(key) && fields[key] === '') continue;
     next[key] = fields[key];
   }
   for (const key of ['target_low', 'target_high', 'very_low', 'very_high']) {
@@ -103,10 +139,18 @@ export function updateSettings(fields) {
   if (next.nightscout_url && !/^https?:\/\//i.test(next.nightscout_url)) {
     throw new Error('Nightscout URL must start with http:// or https://');
   }
+  if (!['US', 'OUS'].includes(next.eversense_region || 'US')) throw new Error('Eversense region must be US or OUS');
+  next.eversense_region = next.eversense_region || 'US';
+  next.eversense_username = next.eversense_username ? String(next.eversense_username).trim() : null;
+  next.eversense_patient = next.eversense_patient ? String(next.eversense_patient).trim() : null;
+  next.eversense_auto_sync = next.eversense_auto_sync ? 1 : 0;
+  for (const key of SECRET_FIELDS) next[key] = encryptSecret(next[key]);
   db.prepare(`
     UPDATE dm_settings SET units=@units, target_low=@target_low, target_high=@target_high,
       very_low=@very_low, very_high=@very_high, timezone=@timezone,
-      nightscout_url=@nightscout_url, nightscout_token=@nightscout_token, updated_at=datetime('now')
+      nightscout_url=@nightscout_url, nightscout_token=@nightscout_token,
+      eversense_region=@eversense_region, eversense_username=@eversense_username, eversense_password=@eversense_password,
+      eversense_patient=@eversense_patient, eversense_auto_sync=@eversense_auto_sync, updated_at=datetime('now')
     WHERE id = 1
   `).run(next);
   return getSettings();

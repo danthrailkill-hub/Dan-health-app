@@ -8,6 +8,7 @@ import documentsRouter from './routes/documents.js';
 import recommendationsRouter from './routes/recommendations.js';
 import { makeCrudRouter } from './routes/crud.js';
 import diabetesRouter from './diabetes/routes.js';
+import { startEversenseScheduler } from './diabetes/eversenseSync.js';
 import { requireAuth } from './auth.js';
 
 if (!process.env.JWT_SECRET || !process.env.APP_PASSWORD) {
@@ -41,4 +42,5 @@ for (const table of ['conditions', 'medications', 'allergies', 'immunizations', 
 
 app.listen(PORT, () => {
   console.log(`Health app server listening on port ${PORT}`);
+  startEversenseScheduler();
 });

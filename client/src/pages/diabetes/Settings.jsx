@@ -17,7 +17,17 @@ export default function DiabetesSettings() {
 
   function fill(settings) {
     setS(settings);
-    const f = { units: settings.units, timezone: settings.timezone, nightscout_url: settings.nightscout_url || '', nightscout_token: '' };
+    const f = {
+      units: settings.units,
+      timezone: settings.timezone,
+      nightscout_url: settings.nightscout_url || '',
+      nightscout_token: '',
+      eversense_region: settings.eversense_region || 'US',
+      eversense_username: settings.eversense_username || '',
+      eversense_password: '',
+      eversense_patient: settings.eversense_patient || '',
+      eversense_auto_sync: !!settings.eversense_auto_sync,
+    };
     for (const t of THRESHOLDS) f[t.key] = toDisplay(settings[t.key], settings.units);
     setForm(f);
   }
@@ -30,7 +40,7 @@ export default function DiabetesSettings() {
 
   const set = (k) => (e) => {
     setMessage('');
-    const value = e.target.value;
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     if (k === 'units') {
       // Convert the threshold inputs so switching units doesn't change the actual targets.
       setForm((p) => {
@@ -47,7 +57,17 @@ export default function DiabetesSettings() {
     e.preventDefault();
     setError('');
     try {
-      const body = { units: form.units, timezone: form.timezone, nightscout_url: form.nightscout_url || null, nightscout_token: form.nightscout_token };
+      const body = {
+        units: form.units,
+        timezone: form.timezone,
+        nightscout_url: form.nightscout_url || null,
+        nightscout_token: form.nightscout_token,
+        eversense_region: form.eversense_region,
+        eversense_username: form.eversense_username || null,
+        eversense_password: form.eversense_password,
+        eversense_patient: form.eversense_patient || null,
+        eversense_auto_sync: form.eversense_auto_sync,
+      };
       for (const t of THRESHOLDS) body[t.key] = fromDisplay(form[t.key], form.units);
       await api.put('/api/diabetes/settings', body);
       fill(await reloadDiabetesSettings());
@@ -57,10 +77,10 @@ export default function DiabetesSettings() {
     }
   }
 
-  async function clearToken() {
-    await api.put('/api/diabetes/settings', { nightscout_token: null });
+  async function clearSecret(key, label) {
+    await api.put('/api/diabetes/settings', { [key]: null, ...(key === 'eversense_password' ? { eversense_auto_sync: false } : {}) });
     fill(await reloadDiabetesSettings());
-    setMessage('Token removed.');
+    setMessage(`${label} removed.`);
   }
 
   function resetTargets() {
@@ -104,6 +124,53 @@ export default function DiabetesSettings() {
         </section>
 
         <section className="card">
+          <h3 className="card-title">Eversense</h3>
+          <p className="muted small" style={{ marginTop: -4 }}>
+            Pulls your Eversense CGM readings from the Eversense cloud, the same data the Eversense NOW app shows followers.
+          </p>
+          <ol className="help-list">
+            <li>Make sure the Eversense app on your phone is uploading to Eversense DMS (it does this by default when signed in).</li>
+            <li>
+              Create a second Eversense account to act as your <strong>follower</strong> (any other email address), or use a family member's.
+            </li>
+            <li>In the Eversense app, open the data sharing (Eversense NOW) settings and invite that email. Accept the invite in the Eversense NOW app.</li>
+            <li>Enter the <strong>follower</strong> account's email and password below, then save and press Sync on Import &amp; Sync.</li>
+          </ol>
+          <div className="form-grid">
+            <div className="form-field">
+              <label htmlFor="st-evr">Region</label>
+              <select id="st-evr" value={form.eversense_region} onChange={set('eversense_region')}>
+                <option value="US">United States</option>
+                <option value="OUS">Outside the US</option>
+              </select>
+            </div>
+            <div className="form-field">
+              <label htmlFor="st-evp">Person to sync (only if the follower follows several people)</label>
+              <input id="st-evp" type="text" placeholder="wearer's Eversense email" value={form.eversense_patient} onChange={set('eversense_patient')} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="st-evu">Follower account email</label>
+              <input id="st-evu" type="email" autoComplete="off" value={form.eversense_username} onChange={set('eversense_username')} />
+            </div>
+            <div className="form-field">
+              <label htmlFor="st-evpw">Follower account password {s.has_eversense_password && '(saved; leave blank to keep it)'}</label>
+              <input id="st-evpw" type="password" autoComplete="new-password" value={form.eversense_password} onChange={set('eversense_password')} />
+            </div>
+            <div className="form-field full">
+              <label className="check-inline" style={{ marginBottom: 0 }}>
+                <input type="checkbox" checked={form.eversense_auto_sync} onChange={set('eversense_auto_sync')} /> Sync automatically every 5 minutes while the server is running
+              </label>
+            </div>
+          </div>
+          <p className="muted small">
+            The password is encrypted in your local database and only sent to Eversense. Eversense locks an account for 30 minutes after 3
+            wrong passwords, so automatic sync pauses itself if the password is rejected. This uses Eversense's unofficial follower API and
+            could stop working if Eversense changes it.{' '}
+            {s.has_eversense_password && <button type="button" className="link-btn" onClick={() => clearSecret('eversense_password', 'Eversense password')}>Remove saved password</button>}
+          </p>
+        </section>
+
+        <section className="card">
           <h3 className="card-title">Nightscout</h3>
           <div className="form-grid">
             <div className="form-field full">
@@ -117,7 +184,7 @@ export default function DiabetesSettings() {
           </div>
           <p className="muted small">
             Use a read-only token: in Nightscout, Admin Tools → Subjects → add one with the "readable" role. It is stored only in your local
-            database. {s.has_nightscout_token && <button type="button" className="link-btn" onClick={clearToken}>Remove saved token</button>}
+            database. {s.has_nightscout_token && <button type="button" className="link-btn" onClick={() => clearSecret('nightscout_token', 'Token')}>Remove saved token</button>}
           </p>
         </section>
 
