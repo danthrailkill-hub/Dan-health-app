@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import authRouter from './routes/auth.js';
@@ -38,6 +41,14 @@ app.use('/api/recommendations', requireAuth, recommendationsRouter);
 app.use('/api/diabetes', requireAuth, diabetesRouter);
 for (const table of ['conditions', 'medications', 'allergies', 'immunizations', 'labs', 'visits', 'contacts', 'goals']) {
   app.use(`/api/${table}`, requireAuth, makeCrudRouter(table));
+}
+
+// Serve the built web app (client/dist) from the same server, if it has been built,
+// so `npm run build` in client/ then `npm start` here is all you need.
+const clientDist = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'client', 'dist');
+if (fs.existsSync(path.join(clientDist, 'index.html'))) {
+  app.use(express.static(clientDist));
+  app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 }
 
 app.listen(PORT, () => {

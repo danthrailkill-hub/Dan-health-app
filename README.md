@@ -11,30 +11,36 @@ All data is stored locally in a SQLite file on the server you run — nothing is
 - `server/` — Express API + SQLite (`better-sqlite3`). Single-user password auth via an httpOnly session cookie.
 - `client/` — React (Vite) single-page app.
 
-## Setup
+## Running it on your computer
 
-### 1. Server
-
-```bash
-cd server
-cp .env.example .env
-# edit .env: set JWT_SECRET (any long random string) and APP_PASSWORD (your password)
-npm install
-npm start
-```
-
-The API listens on `http://localhost:4000` by default.
-
-### 2. Client
+You need [Node.js](https://nodejs.org) 20 or newer (the "LTS" installer) and [Git](https://git-scm.com).
 
 ```bash
-cd client
-cp .env.example .env   # defaults to http://localhost:4000, change if needed
-npm install
-npm run dev
+git clone https://github.com/danthrailkill-hub/Dan-health-app.git
+cd Dan-health-app
+git checkout claude/intelligent-knuth-lax5jy   # until this branch is merged
+cp server/.env.example server/.env
 ```
 
-Open `http://localhost:5173` and log in with the `APP_PASSWORD` you set.
+Edit `server/.env`: set `APP_PASSWORD` to the password you'll log in with, and `JWT_SECRET` to any long random string (it also encrypts saved Eversense/Nightscout credentials, so don't change it later). Then:
+
+```bash
+npm run setup   # installs everything and builds the web app (first time, and after pulling changes)
+npm start       # starts the app
+```
+
+Open http://localhost:4000 and log in with your `APP_PASSWORD`. Stop it with Ctrl+C. To use it from your phone on the same Wi-Fi, open `http://<your computer's IP>:4000`.
+
+### Developing (live reload)
+
+Run the server and the Vite dev server in two terminals:
+
+```bash
+cd server && npm run dev
+cd client && npm run dev
+```
+
+Then open http://localhost:5173. Vite forwards `/api` requests to the server on port 4000.
 
 ## Type 1 Diabetes module
 
