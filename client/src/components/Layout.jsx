@@ -3,6 +3,13 @@ import { useAuth } from '../lib/AuthContext';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard' },
+  { section: 'Type 1 Diabetes' },
+  { to: '/diabetes', label: 'Overview' },
+  { to: '/diabetes/day', label: 'Daily view' },
+  { to: '/diabetes/log', label: 'Logbook' },
+  { to: '/diabetes/import', label: 'Import & Sync' },
+  { to: '/diabetes/settings', label: 'Diabetes Settings' },
+  { section: 'Health Record' },
   { to: '/recommendations', label: '✦ Recommendations' },
   { to: '/goals', label: 'Goals' },
   { to: '/profile', label: 'Profile' },
@@ -24,16 +31,20 @@ export default function Layout() {
       <aside className="sidebar">
         <h1>My Health Record</h1>
         <nav>
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.map((item) =>
+            item.section ? (
+              <div key={item.section} className="nav-section">{item.section}</div>
+            ) : (
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/'}
+              end={item.to === '/' || item.to === '/diabetes'}
               className={({ isActive }) => (isActive ? 'active' : '')}
             >
               {item.label}
             </NavLink>
-          ))}
+            )
+          )}
         </nav>
         <button className="logout-btn" onClick={logout}>
           Log out

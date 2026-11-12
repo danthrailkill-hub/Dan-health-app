@@ -7,6 +7,7 @@ import profileRouter from './routes/profile.js';
 import documentsRouter from './routes/documents.js';
 import recommendationsRouter from './routes/recommendations.js';
 import { makeCrudRouter } from './routes/crud.js';
+import diabetesRouter from './diabetes/routes.js';
 import { requireAuth } from './auth.js';
 
 if (!process.env.JWT_SECRET || !process.env.APP_PASSWORD) {
@@ -17,7 +18,7 @@ if (!process.env.JWT_SECRET || !process.env.APP_PASSWORD) {
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 app.use(
   cors({
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/profile', requireAuth, profileRouter);
 app.use('/api/documents', requireAuth, documentsRouter);
 app.use('/api/recommendations', requireAuth, recommendationsRouter);
+app.use('/api/diabetes', requireAuth, diabetesRouter);
 for (const table of ['conditions', 'medications', 'allergies', 'immunizations', 'labs', 'visits', 'contacts', 'goals']) {
   app.use(`/api/${table}`, requireAuth, makeCrudRouter(table));
 }

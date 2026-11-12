@@ -7,6 +7,11 @@ import Profile from './pages/Profile';
 import Documents from './pages/Documents';
 import Recommendations from './pages/Recommendations';
 import RecordsPage from './pages/RecordsPage';
+import DiabetesOverview from './pages/diabetes/Overview';
+import DiabetesDaily from './pages/diabetes/Daily';
+import DiabetesLogbook from './pages/diabetes/Logbook';
+import DiabetesImport from './pages/diabetes/ImportSync';
+import DiabetesSettings from './pages/diabetes/Settings';
 
 function App() {
   const { authed } = useAuth();
@@ -23,6 +28,12 @@ function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/diabetes" element={<DiabetesOverview />} />
+        <Route path="/diabetes/day" element={<DiabetesDaily />} />
+        <Route path="/diabetes/day/:date" element={<DiabetesDaily />} />
+        <Route path="/diabetes/log" element={<DiabetesLogbook />} />
+        <Route path="/diabetes/import" element={<DiabetesImport />} />
+        <Route path="/diabetes/settings" element={<DiabetesSettings />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/goals" element={<RecordsPage table="goals" />} />
         <Route path="/profile" element={<Profile />} />
